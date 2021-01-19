@@ -1,0 +1,612 @@
+"""
+Instalar estos módulos
+python -m pip install requests
+python -m pip install beautifulsoup4
+"""
+# BBDD
+import sqlite3
+
+# Clase para establecer las acciones sobre la BBDD
+class BBDDMensajes(object):
+    sql_insert_RRSS = "INSERT INTO RED_SOCIAL (nombre_rrss, url) VALUES (?,?)"
+    sql_insert_usuario = "INSERT INTO USUARIO (nick, rrss_id, nombre, email) VALUES (?,?,?,?)"
+    sql_insert_mensaje = "INSERT INTO MENSAJE (user_id, fecha, mensaje) VALUES (?,?,?)"
+    sql_select_RRSS = "SELECT codigo, nombre_rrss, url FROM RED_SOCIAL"
+    sql_select_usuario = "SELECT codigo, nick, rrss_id, nombre, email FROM USUARIO"
+    sql_select_mensaje = "SELECT codigo, user_id, fecha, mensaje FROM MENSAJE"
+    sql_select_usu_fecha_mensaje = "SELECT u1.nick FROM USUARIO u1 join MENSAJE u2 on u1.codigo = u2.user_id \
+                                    WHERE (u2.fecha between ? and ?) and u2.mensaje LIKE ? "
+    sql_select_media_redes = "SELECT s1.nombre_rrss from RED_SOCIAL s1 join USUARIO s2 join MENSAJE s3 \
+                                on s1.codigo = s2.rrss_id and s2.codigo = s3.user_id WHERE s3.fecha between ? and ?"
+    sql_select_RRSS_TEMAS = "SELECT r1.nombre_rrss from RED_SOCIAL r1 join USUARIO r2 join MENSAJE r3 \
+                                on r1.codigo = r2.rrss_id and r2.codigo = r3.user_id WHERE r3.mensaje LIKE ?"
+
+
+    def __init__(self, conexion):
+        self.conexion = conexion
+        if not self.exists_tablas():
+            cursor = self.conexion.cursor()
+            cursor.execute(self.crea_red_social())
+            cursor.execute(self.crea_usuario())
+            cursor.execute(self.crea_mensaje())
+        
+    def crea_red_social(self):
+        return 'CREATE TABLE IF NOT EXISTS RED_SOCIAL ( \
+                CODIGO integer PRIMARY KEY, \
+                NOMBRE_RRSS texto(20) NOT NULL, \
+                URL texto(100) NULL \
+                )'
+    
+    def crea_usuario(self):
+        return 'CREATE TABLE IF NOT EXISTS USUARIO ( \
+                CODIGO integer PRIMARY KEY, \
+                NICK texto(20) NOT NULL, \
+                RRSS_ID integer REFERENCES red_social(codigo) NOT NULL, \
+                NOMBRE texto(20) NULL, \
+                email texto(100) NULL\
+                )'
+
+    def crea_mensaje(self):
+        return 'CREATE TABLE IF NOT EXISTS MENSAJE ( \
+                CODIGO integer PRIMARY KEY, \
+                USER_ID integer REFERENCES usuario(codigo) NOT NULL, \
+                FECHA date NOT NULL, \
+                MENSAJE texto(200) NOT NULL \
+                )'
+
+    def exists_tablas(self):
+        return False
+    def last_rowid(self, cursor):
+        return 0
+
+    def add_RRSS(self, redSocial):
+        cursor= self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_insert_RRSS,(redSocial.nombre_RRSS, redSocial.url))
+        redSocial.id = self.last_rowid(cursor)
+        cursor.close()
+
+    def add_Usuario(self, Usuario):
+        cursor = self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_insert_usuario,(Usuario.nick, Usuario.redsocial_id \
+                        ,Usuario.nombre, Usuario.email))
+        Usuario.id = self.last_rowid(cursor)
+        cursor.close()
+
+    def add_Mensaje(self, Mensaje):
+        cursor = self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_insert_mensaje,(Mensaje.usuario_id, Mensaje.fecha, Mensaje.texto))
+        Mensaje.id = self.last_rowid(cursor)
+        cursor.close()
+
+    def select_RRSS(self):
+        cursor = self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_select_RRSS)
+        registro = cursor.fetchall()
+        cursor.close()
+        return [redSocial(r[0], r[1], r[2])  for r in registro]
+
+    def select_Usuario(self):
+        cursor = self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_select_usuario)
+        registro = cursor.fetchall()
+        cursor.close()
+        return [Usuario(u[0], u[1], u[2], u[3], u[4])  for u in registro]
+
+    def select_Mensaje(self):
+        cursor = self.conexion.cursor()
+        cursor.execute(BBDDMensajes.sql_select_mensaje)
+        registro = cursor.fetchall()
+        cursor.close()
+        return [Mensaje(m[0], m[1], m[2], m[3])  for m in registro]
+
+    def select_usuario_fechas(self, Selecciona_Mensajes):
+        cursor = self.conexion.cursor()
+        #en el texto del mensaje tiene que contener lo que se pide
+        txt = "%"+Selecciona_Mensajes.texto+"%" 
+        cursor.row_factory = sqlite3.Row
+        cursor.execute(BBDDMensajes.sql_select_usu_fecha_mensaje, (Selecciona_Mensajes.fecha1, Selecciona_Mensajes.fecha2, txt))
+        registro = cursor.fetchall()
+        cursor.close()
+        return registro
+    
+    def select_media_redes(self, Selecciona_Mensajes):
+        cursor = self.conexion.cursor()
+        cursor.row_factory=sqlite3.Row
+        cursor.execute(BBDDMensajes.sql_select_media_redes, (Selecciona_Mensajes.fecha1, Selecciona_Mensajes.fecha2))
+        registro = cursor.fetchall()
+        cursor.close()
+        return registro
+
+    def select_RRSS_temas(self, Selecciona_Mensajes):
+        cursor = self.conexion.cursor()
+        cursor.row_factory = sqlite3.Row
+        #El texto es un conjunto de elementos que forman el tema
+        txt = Selecciona_Mensajes.texto
+        cursor.execute(BBDDMensajes.sql_select_RRSS_TEMAS, (txt,))
+        registro = cursor.fetchall()
+        cursor.close()
+        return registro    
+
+# Clase para gestionar la conexión de la BBDD
+class MensajeSQLiteConexion(BBDDMensajes):
+    def __init__(self):
+        conexion = sqlite3.connect(":memory:")
+        super().__init__(conexion)
+
+    def last_rowid(self, cursor):
+        return cursor.lastrowid
+
+    def close(self):
+        self.conexion.close()
+
+# Clases para gestionar datos: RRSS, Usuario, Mensaje
+class redSocial:
+    def __init__(self, id=0, nombre_RRSS=None, url=None):
+        self.id = id
+        self.nombre_RRSS = nombre_RRSS
+        self.url = url
+
+    def __str__(self):
+        return f'{self.id}, {self.nombre_RRSS}, {self.url}'
+    def __repr__(self):
+        return self.__str__()
+
+class Usuario:
+    def __init__(self, id=0, nick=None, redsocial_id=None, nombre=None, email=None, ):
+        self.id = id
+        self.nick = nick
+        self.redsocial_id = redsocial_id
+        self.nombre = nombre
+        self.email = email
+
+    def __str__(self):
+        return f'{self.id}, {self.nick}, {self.redsocial_id}, {self.nombre}, {self.email}'
+    def __repr__(self):
+        return self.__str__()
+
+class Mensaje:
+    def __init__(self, id=0, usuario_id=None, fecha=None, texto=None):
+        self.id = id
+        self.fecha = fecha
+        self.texto = texto
+        self.usuario_id = usuario_id
+
+    def __str__(self):
+        return f'{self.id}, {self.usuario_id}, {self.fecha}, {self.texto}'
+    def __repr__(self):
+        return self.__str__()
+
+class Selecciona_Mensajes:
+    def __init__(self, fecha1=None, fecha2=None, texto=None):
+        self.fecha1 = fecha1
+        self.fecha2 = fecha2
+        self.texto = texto
+
+# Clases para el tratamiento de mensajes: Manual, Texto y HTML
+class ProcesadorMensajes:
+    def __init__(self, redes=None, usuario=None, mensaje=None, buscar=None):
+        self.redes = redes
+        self.usuario = usuario
+        self.mensaje = mensaje
+        self.buscar = buscar
+
+    def inserta_red(self):
+        db.add_RRSS(self.redes)
+
+    def inserta_usuario(self):
+        db.add_Usuario(self.usuario)
+
+    def inserta_mensaje(self):
+        db.add_Mensaje(self.mensaje)
+
+    def obtener_mensajes(self):
+        registro = db.select_usuario_fechas(self.buscar)
+        lista_usuarios = []
+        for reg in registro:
+            lista_usuarios.append("{}".format(reg['nick']))
+        # Obtenemos la lista de usuarios que cumplen el criterio de búsqueda
+        return lista_usuarios
+    
+    def obtener_media(self):
+        registro = db.select_media_redes(self.buscar)
+        lista_datos = []
+        for reg in registro:
+            #lista_datos.append("({},{})".format(reg['nombre_rrss'],reg['fecha']))
+            lista_datos.append("{}".format(reg['nombre_rrss']))
+        return lista_datos
+    
+    def obtener_RRSS(self):
+        registro = db.select_RRSS_temas(self.buscar)
+        lista_RRSS_temas = []
+        for reg in registro:
+            lista_RRSS_temas.append("{}".format(reg['nombre_rrss']))
+        return lista_RRSS_temas
+        
+class ProcesadorFileMensajes(ProcesadorMensajes):
+    def __init__(self, mensaje=None, usuario=None, redes=None, ruta=None):
+        super().__init__(mensaje=mensaje, usuario=usuario, redes=redes)
+        self.ruta = ruta
+
+    def tratamiento_fichero(self):
+        with open(self.ruta, 'r') as fichero:
+            linea = fichero.readline()
+            while True:
+                if (linea == '' or linea == '\n'):
+                    # Si al leer una nueva línea está también vacía, es fin de fichero
+                    linea = fichero.readline()                    
+                    if (linea == '' or linea == '\n'): break
+                    else: continue
+
+                if (linea != '' or linea != '\n'):
+                    # Segrega los datos de la primera línea en trozos para coger red,nick,fecha
+                    # El mensaje pueden ser 1 o varias líneas
+
+                    datos = linea.split(',')
+                    linea = fichero.readline()                  
+                    texto = ''
+                    while linea != '\n':
+                        texto = texto + linea[:-1]
+                        linea = fichero.readline()                         
+                        # Si hay más de 1 línea de mensaje, añado espacio para separar las palabras.
+                        if linea != '\n': texto += ' '
+
+                    # Para informar correctamente el elemento de la clase Inserta_Datos, hay que pasarle la
+                    # lista de tuplas, aunque haya valores sin informar:
+                    # datos = [(social, red), (nick, nombre, email), (fechaFormateada, mensaje)]
+                    valFec = Validar_Fecha(datos[2][:-1])
+                    fechaOK = valFec.validar()
+                    datos_mensaje = [(datos[0].upper(),), (datos[1],), (fechaOK, texto)]
+                    registro = Inserta_Datos(datos_mensaje)
+                    registro.inserta_registros()
+
+class ProcesadorHtmlMensajes(ProcesadorMensajes):
+    def __init__(self, mensaje=None, usuario=None, redes=None, rutaHTML=None):
+        super().__init__(mensaje=mensaje, usuario=usuario, redes=redes)
+        self.rutaHTML = rutaHTML
+
+    def tratamiento_HTML(self):
+        # HTML
+        from bs4 import BeautifulSoup 
+        import requests
+        #import urllib.request 
+
+        response = requests.get(self.rutaHTML)
+        pagina = response.content.decode('utf-8')
+        #Expecifico el formateo del parseo
+        soup = BeautifulSoup(pagina,'html.parser')
+        #RRSS
+        social = soup.h1.get_text().upper()
+        #Lista de divs que contienen el mensaje
+        lista_divs = soup.find_all("div")
+        #Recorriendo todos los divs para sacar sus datos e insertar en la BBDD
+        for i in range(len(lista_divs)):
+            nick = lista_divs[i].p.get_text()
+            fecha = lista_divs[i].date.get_text()
+            valFec = Validar_Fecha(fecha)
+            fechaOK = valFec.validar()
+            texto = lista_divs[i].article.get_text()
+            datos_mensaje = [(social,), (nick,), (fechaOK, texto)]
+            #print(datos_mensaje)
+            registro = Inserta_Datos(datos_mensaje)
+            registro.inserta_registros()                     
+            
+# Clase para insertar registros en BBDD
+class Inserta_Datos:
+    # datos = [(social, red), (nick, nombre, email), (fechaFormateada, mensaje)]
+    def __init__(self, datos):
+        self.datos = datos
+
+    def inserta_registros(self):
+        # Inserta RRSS en la BBDD
+        red = redSocial(0, *self.datos[0])
+        insert_red = ProcesadorMensajes(redes=red)
+        insert_red.inserta_red()
+ 
+        # Inserta Usuario en la BBDD
+        user = Usuario(0, *self.datos[1], red.id)
+        insert_user = ProcesadorMensajes(usuario=user)
+        insert_user.inserta_usuario()
+
+        # Inserta Mensaje en la BBDD
+        mensaje = Mensaje(0, user.id, *self.datos[2])
+        insert_mensaje = ProcesadorMensajes(mensaje=mensaje)
+        insert_mensaje.inserta_mensaje()
+
+# Clase selección mensajes entre fechas y texto
+class Buscar_Mensajes:
+    def __init__(self, buscador):
+        self.buscador = buscador
+    
+    def busca_mensajes(self):
+        busqueda = ProcesadorMensajes(buscar=self.buscador)
+        return busqueda.obtener_mensajes()
+    
+    def sacar_medias(self):
+        busqueda = ProcesadorMensajes(buscar=self.buscador)
+        return busqueda.obtener_media()
+
+    def sacar_RRSS_tema(self):
+        busqueda = ProcesadorMensajes(buscar=self.buscador)
+        return busqueda.obtener_RRSS()
+
+# Clase para validar la fecha en formato datetime yyyy-mm-dd
+class Validar_Fecha:
+    def __init__(self, fecha):
+        self.fecha=fecha
+
+    def validar(self):
+        from datetime import datetime
+        while True:
+            try:
+                fecha_formateada = datetime.strptime(self.fecha, '%Y-%m-%d').date()
+            except:
+                # Se cancela la ejecución enviando una excepción
+                raise Exception('Fecha incorrecta. Escribir fecha en formato correcto.', self.fecha)
+            else:
+                break
+        return fecha_formateada
+
+# Funciones con operaciones de tratamiento de datos
+# Función para ordenar los usuarios obtenidos de una lista
+def ordena_usuarios(usuarios_desordenados):
+    #print(usuarios_desordenados)
+    nueva_lista = []
+    for usu in usuarios_desordenados:
+        if nueva_lista ==[]:
+            nueva_lista = [(usu, 1)]
+        else:
+            existe = False
+            for usuario, valor in nueva_lista:
+                if usuario == usu:
+                    existe = True
+                    viejo_valor = valor
+                    nuevo_valor = valor + 1
+
+            if existe:
+                nueva_lista.remove((usu,viejo_valor))
+                nueva_lista.append((usu,nuevo_valor))
+            else:
+                nueva_lista.append((usu, 1))
+
+    #Función sorted para ordenar una lista de tuplas por su valor
+    lista_ordenada = sorted(nueva_lista, key=lambda p: p[1], reverse=False)
+    print("Lista ordenada: ", lista_ordenada)
+    detalle_apariciones(lista_ordenada)
+
+def detalle_apariciones(lista_ordenada):
+    cadena = '*' * 39
+    print(cadena)
+    mCadena = '-> '
+
+    print(f"{'******'}{'USUARIO':^17}|{'Mensajes':^12}{'***'}")
+
+    for nick, veces in lista_ordenada:
+        print(f"{mCadena}{nick:<20}|{veces:^12}{'***'}")
+
+# Función para el tratamiento de datos e informar histograma
+def tratamiento_histograma(lista_datos):
+    import re
+    tratados = ""
+    histograma = []
+    for RRSS in lista_datos:
+        numero = 0
+        if not re.search(RRSS, tratados):
+            tratados += RRSS
+            for elemento in lista_datos:
+                if re.search(RRSS, elemento):
+                    numero  += 1
+            histograma.append((RRSS, numero))
+    return histograma
+
+# Función para pintar el hisograma de los mensajes
+def pintar_histograma(histograma, buscador):
+    fecha_inicio = buscador.fecha1
+    fecha_fin = buscador.fecha2
+    diferencia = fecha_fin - fecha_inicio
+    # La diferencia de fechas es un objeto datetime que formateo para sacar
+    # su valor y pasarlo a formato integer
+    dias = int("{}".format(getattr(diferencia, 'days')))
+    #print(histograma)
+    # Para pintar el histograma, se pide la media de mensajes en el intervalo
+    # de fechas
+    cadena = '*' * 62
+    print(cadena)
+    mini_cadena = '*' * 5
+    print(f"{mini_cadena}{'RED SOCIAL':^20}|{'MEDIA MENSAJES DIARIOS':^32}{mini_cadena}")
+
+    for red,Nmensajes in histograma:
+        ast = int(Nmensajes / dias)
+        info = 'x' * ast
+        print(f"{mini_cadena}{red:^20}|{info:<32}{mini_cadena}")
+
+def estadistica(lista, lista_no_repes):
+    Estadistica = {}
+    for no_repe in lista_no_repes:
+        veces = 0
+        for elemento in lista:
+            if elemento == no_repe:
+                veces += 1
+        Estadistica.update({no_repe: veces})
+
+    print(Estadistica)
+    cadena = '*' * 40
+    print(cadena)
+    estad1 = '*' * 5
+    print(f"{estad1}{'ESTADISTICA':^30}{estad1}")
+    print(f"{estad1}{'TEMA':^15}|{'RRSS':^14}{estad1}")
+
+    for red in Estadistica:
+        print(f"{estad1}{red:^15}|{Estadistica[red]:^14}{estad1}")    
+    pass
+
+# Funciones para el menú principal
+# Funciones de recogida de datos manual
+def datosMensaje():
+    # Menú para introducir datos
+    while True:
+        social = input('RED SOCIAL:').upper()
+        red = input('URL: ')
+        nick = input('NICK: ')
+        nombre = input('NOMBRE: ')
+        email = input('EMAIL: ')
+
+        fechaOK = ''
+        while fechaOK == '':
+            fecha = input('FECHA (formato YYYY-MM-DD): ')
+            valFec = Validar_Fecha(fecha)
+            fechaOK = valFec.validar()
+
+        mensaje = input('MENSAJE: ')
+        break
+    return [(social, red), (nick, nombre, email), (fechaOK, mensaje)]
+
+# Función selección de opciones del menú
+def seleccion_Menu():
+    while True:
+        print('== Menú principal == \n\
+    Seleccionar fuente del mensaje \n\
+        1. Manual \n\
+        2. Fichero \n\
+        3. HTML \n\
+        4. Salir \n')
+        opcion = input()
+
+        if opcion == '1':
+            # Recogida de datos manual
+            datos_mensaje = datosMensaje()
+            registro = Inserta_Datos(datos_mensaje)
+            registro.inserta_registros()
+            print("Registro manual insertado OK")
+
+        elif opcion == '2':
+            ruta_fichero = r"C:\TEMP\fichero_datos_mensajes.txt"
+
+            # Tratamiento de datos del fichero
+            datosFile = ProcesadorFileMensajes(ruta=ruta_fichero)
+
+            datosFile.tratamiento_fichero()
+            print("Registros del fichero texto insertados OK")
+            
+        elif opcion == '3':
+            #Esta ruta es la que se genera al arrancar el html con Visual Studio
+            #creando la web con el esquema propuesto en el ejercicio
+            url = "http://localhost:10202/Web_Mensajeria.html"
+
+            # Tratamiento de datos del fichero HTML
+            datosHTML= ProcesadorHtmlMensajes(rutaHTML=url)
+            datosHTML.tratamiento_HTML()
+            print("Registro del fichero HTML insertados OK")
+
+        elif (opcion != '1' and opcion != '2' and opcion != '3'):
+            break
+
+        else:
+            print('Opción incorrecta, selecciona una de las opciones indicadas en el menú.')
+            continue
+
+# Funciones del submenú
+# Función para recoger datos en la selección
+def rango_y_texto(opcion):
+    if opcion == '1' or opcion == '2':
+        fecha_1_OK = ''
+        while fecha_1_OK == '':
+            fecha = input('FECHA 1 (formato YYYY-MM-DD): ')
+            valFec = Validar_Fecha(fecha)
+            fecha_1_OK = valFec.validar()
+
+        fecha_2_OK = ''
+        while fecha_2_OK == '':
+            fecha = input('FECHA 2 (formato YYYY-MM-DD): ')
+            valFec = Validar_Fecha(fecha)
+            fecha_2_OK = valFec.validar()    
+        
+        if opcion =='2':
+            return (fecha_1_OK, fecha_2_OK)
+
+    if opcion == '1':
+        contiene_texto = input("Texto a buscar: ")
+        return (fecha_1_OK, fecha_2_OK, contiene_texto)
+    
+    if opcion == '3':
+        palabras = input("Selecciona palabras para buscar en mensajes (separadas por un espacio):")
+        lista_palabras = palabras.split(' ')
+        tema = ''
+        for item in lista_palabras:
+            tema += "%" + item + "%"
+        return tema
+
+# Función selección de opciones para recuperar datos
+def peticion_datos():
+    while True:
+        print("** Menú petición datos ** \n\
+        1. Usuarios con un texto en sus mensajes. \n\
+        2. Media mensajes diarios para cada RRSS. \n\
+        3. RRSS más activa para un determinado tema. \n\
+        4. Salir. \n")
+
+        opcion = input()
+
+        if opcion == '1':
+            '''
+            Dado un rango entre dos fechas y un texto, obtener aquellos usuarios que 
+            incluyen en sus mensajes el texto en medio de una frase.
+            '''
+            # Petición y validación de fechas y texto
+            datos_de_busqueda = rango_y_texto(opcion)
+            #crea el objeto para seleccionar mensajes con los datos de entrada
+            buscador = Selecciona_Mensajes(*datos_de_busqueda)
+            #busca registros con el objeto de busqueda
+            registros = Buscar_Mensajes(buscador)
+            lista = registros.busca_mensajes()
+            ordena_usuarios(lista)
+
+
+        elif opcion == '2':
+            '''
+            Dado un rango entre dos fechas, la media de mensajes diarios para cada red social. 
+            Procura visualizar los resultados de esta consulta mediante un histograma.
+            '''
+            fechas_busqueda = rango_y_texto(opcion)
+            buscador = Selecciona_Mensajes(*fechas_busqueda)
+            registros = Buscar_Mensajes(buscador)
+            datos = registros.sacar_medias()
+            #Aquí hay que pintar el histograma con los datos
+            lista_histograma = tratamiento_histograma(datos)
+            pintar_histograma(lista_histograma, buscador)
+
+        elif opcion == '3':
+            '''
+            Hay que obtener una estadística de cuál es la red social dónde más se habla sobre un 
+            determinado tema. Dicho tema se definirá por un conjunto de palabras que pueden aparecer 
+            en los mensajes.
+            '''
+            temas = rango_y_texto(opcion)
+            buscador = Selecciona_Mensajes(texto=temas)
+            registros = Buscar_Mensajes(buscador)
+            datos = registros.sacar_RRSS_tema()
+            #Solo si la lista de datos contiene elementos se hace el tratamiento
+            if datos != []:
+                lista_datos = []
+                for d in range(len(datos)):
+                    lista_datos.append(datos[d])
+
+                lista_RRSS_NO_repe = set(lista_datos)
+                estadistica(lista_datos, lista_RRSS_NO_repe)
+            else:
+                print("No hay RRSS que coincidan con el tema propuesto.")
+
+        elif (opcion != '1' and opcion != '2' and opcion != '3'):
+            break
+
+        else:
+            print('Opción incorrecta, selecciona una de las opciones indicadas en el menú.')
+            continue
+
+
+# ******* Programa principal *******
+# Activar la BBDD para todos los casos
+db = MensajeSQLiteConexion()
+# Selección de opciones en el menú
+seleccion_Menu()
+# Selección de opciones para recuperar datos
+peticion_datos()
