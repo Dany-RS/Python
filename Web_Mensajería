@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <h1>Facebook</h1>
+    <div class='mensaje'>
+        <p>Segundo</p>
+        <date>2020-12-19</date>
+        <article>Mensaje HTML de Segundo</article>
+    </div>
+    <div class='mensaje'>
+        <p>Ceres</p>
+        <date>2021-01-21</date>
+        <article>Un mensaje de Ceres</article>
+    </div>
+    <div class='mensaje'>
+        <p>Dany</p>
+        <date>2020-12-31</date>
+        <article>Primer mensaje de texto</article>
+    </div>
+    <div class='mensaje'>
+        <p>Juan</p>
+        <date>2021-01-01</date>
+        <article>Segundo mensaje de texto</article>
+    </div>
+</body>
+</html>
