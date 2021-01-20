@@ -9,22 +9,10 @@ Los mensajes son adquiridos de diversas maneras:
 
 - Algunos son proporcionados directamente, sin ningún formato específico.
 
-- Otros son adquiridos a terceros, los cuales nos proporcionan un fichero de texto formado por líneas. Dentro de estos ficheros, cada mensaje comienza con una línea con el nombre de la red social, el Nick y la fecha separados por comas, seguido por las líneas que forman el mensaje y seguido de una línea en blanco que separa el siguiente mensaje.
+- Otros son adquiridos a terceros, los cuales nos proporcionan un fichero de texto formado por líneas (FICHERO MENSAJERIA.txt). Dentro de estos ficheros, cada mensaje comienza con una línea con el nombre de la red social, el Nick y la fecha separados por comas, seguido por las líneas que forman el mensaje y seguido de una línea en blanco que separa el siguiente mensaje.
 
--  Otros son adquiridos formando parte del código de una página HTML correspondiente a una red social concreta. La estructura de estas páginas HTML es similar a la siguiente (Código comentado para que no de errores al mostrarlo en github):
-<!--
-<h1>Nombre de la red social</h1>
-<div class='mensaje'>
-   <p>Nick</p>
-   <date>la fecha en formato UTC (año-mes-día)</date>
-   <article>El texto del mensaje</article>
-</div>
-<div class='mensaje'>
-   <p>Nick</p>
-   <date>la fecha en formato UTC (año-mes-día)</date>
-   <article>El texto del mensaje</article>
-</div>
--->
+-  Otros son adquiridos formando parte del código de una página HTML correspondiente a una red social concreta. La estructura de estas páginas HTML es similar a la que está en el fichero WEB_MENSAJERIA.html
+
 Nuestra empresa quiere almacenar todos los mensajes, en un mismo formato, dentro de una base de datos. Esta base de datos constará de varias tablas:
 
 -  Una tabla "red_social". En cada registro se guardará un código numérico único (la clave), el nombre de la red social, y la url de acceso a la red social.
