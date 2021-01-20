@@ -4,6 +4,22 @@
     <meta charset="utf-8" />
     <title></title>
 </head>
+
+<!-- La estructura para la web debe ser en este formato
+<h1>Nombre de la red social</h1>
+<div class='mensaje'>
+   <p>Nick</p>
+   <date>la fecha en formato UTC (año-mes-día)</date>
+   <article>El texto del mensaje</article>
+</div>
+<div class='mensaje'>
+   <p>Nick</p>
+   <date>la fecha en formato UTC (año-mes-día)</date>
+   <article>El texto del mensaje</article>
+</div>
+-->
+
+
 <body>
     <h1>Facebook</h1>
     <div class='mensaje'>
