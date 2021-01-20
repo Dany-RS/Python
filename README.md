@@ -11,8 +11,8 @@ Los mensajes son adquiridos de diversas maneras:
 
 - Otros son adquiridos a terceros, los cuales nos proporcionan un fichero de texto formado por líneas. Dentro de estos ficheros, cada mensaje comienza con una línea con el nombre de la red social, el Nick y la fecha separados por comas, seguido por las líneas que forman el mensaje y seguido de una línea en blanco que separa el siguiente mensaje.
 
--  Otros son adquiridos formando parte del código de una página HTML correspondiente a una red social concreta. La estructura de estas páginas HTML es similar a la siguiente:
-
+-  Otros son adquiridos formando parte del código de una página HTML correspondiente a una red social concreta. La estructura de estas páginas HTML es similar a la siguiente (Código comentado para que no de errores al mostrarlo en github):
+<!--
 <h1>Nombre de la red social</h1>
 <div class='mensaje'>
    <p>Nick</p>
@@ -24,6 +24,7 @@ Los mensajes son adquiridos de diversas maneras:
    <date>la fecha en formato UTC (año-mes-día)</date>
    <article>El texto del mensaje</article>
 </div>
+-->
 Nuestra empresa quiere almacenar todos los mensajes, en un mismo formato, dentro de una base de datos. Esta base de datos constará de varias tablas:
 
 -  Una tabla "red_social". En cada registro se guardará un código numérico único (la clave), el nombre de la red social, y la url de acceso a la red social.
@@ -38,9 +39,7 @@ Aplica una solución orientada a objetos usando clases. Crea una clase Mensaje q
 
 Hay que construir una interfaz de usuario que permita consultar la base de datos de mensajes para obtener estadísticas. Esta interfaz debe soportar consultas como las siguientes:
 
-- Dado un rango entre dos fechas y un texto, obtener aquellos usuarios que incluyen en sus mensajes el texto en medio de una frase.
-
-********Ordena estos usuarios por cantidad de apariciones del texto en distintos mensajes.
+- Dado un rango entre dos fechas y un texto, obtener aquellos usuarios que incluyen en sus mensajes el texto en medio de una frase. Ordena estos usuarios por cantidad de apariciones del texto en distintos mensajes.
 
 - Dado un rango entre dos fechas, la media de mensajes diarios para cada red social. Procura visualizar los resultados de esta consulta mediante un histograma.
 
